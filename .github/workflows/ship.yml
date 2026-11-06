@@ -12,7 +12,14 @@ jobs:
       - name: copy artifact to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUNID: ${{ inputs.run_id }}
+          TAG: rootfs-run-42223129091
         run: |
-          gh run download "${{ inputs.run_id }}" -n alarm-aarch64-kde-rootfs -D out
+          set -o pipefail
+          gh release delete "$TAG" --yes --cleanup-tag || true
+          gh run download "$RUNID" -n alarm-aarch64-kde-rootfs -D out 2>err1.log
+          rc=$?; if [ $rc -ne 0 ]; then echo "::error::dl rc=$rc: $(tr '\n' ' ' < err1.log | tail -c 500)"; exit 1; fi
           ls -l out
-          gh release create "rootfs-run-${{ inputs.run_id }}" out/* --title "rootfs run ${{ inputs.run_id }}" --notes "copied artifact from run ${{ inputs.run_id }}"
+          gh release create "$TAG" out/* --title "rootfs run $RUNID" --notes "copied artifact" 2>err2.log
+          rc=$?; if [ $rc -ne 0 ]; then echo "::error::rel rc=$rc: $(tr '\n' ' ' < err2.log | tail -c 500)"; exit 1; fi
+          echo SHIPPED
