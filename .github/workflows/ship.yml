@@ -12,14 +12,12 @@ jobs:
       - name: copy artifact to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: gerard1221/linux-zhiyu-rootfs-builder
           RUNID: ${{ inputs.run_id }}
           TAG: rootfs-run-42223129091
         run: |
-          set -o pipefail
           gh release delete "$TAG" --yes --cleanup-tag || true
-          gh run download "$RUNID" -n alarm-aarch64-kde-rootfs -D out 2>err1.log
-          rc=$?; if [ $rc -ne 0 ]; then echo "::error::dl rc=$rc: $(tr '\n' ' ' < err1.log | tail -c 500)"; exit 1; fi
+          if ! gh run download "$RUNID" -n alarm-aarch64-kde-rootfs -D out; then echo "::error::download failed"; exit 1; fi
           ls -l out
-          gh release create "$TAG" out/* --title "rootfs run $RUNID" --notes "copied artifact" 2>err2.log
-          rc=$?; if [ $rc -ne 0 ]; then echo "::error::rel rc=$rc: $(tr '\n' ' ' < err2.log | tail -c 500)"; exit 1; fi
+          if ! gh release create "$TAG" out/* --title "rootfs run $RUNID" --notes "copied artifact"; then echo "::error::release create failed"; exit 1; fi
           echo SHIPPED
